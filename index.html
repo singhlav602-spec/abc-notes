@@ -688,11 +688,69 @@ body{
 
 @media(max-width:768px){
   .panelL,.panelM{display:none}
-  .panelR{padding:16px}
-  .statsrow{grid-template-columns:repeat(2,1fr)}
+  .panelR{padding:16px 12px;padding-bottom:80px}
+  .statsrow{grid-template-columns:repeat(2,1fr);padding:14px 14px 0;gap:10px}
   .navtabs{display:none}
   .navsearch{display:none}
+  .noteslayout{height:calc(100vh - 62px - 60px)}
+  .chapterhero{padding:18px 16px}
+  .herotitle{font-size:1.3rem}
+  .heroacts{flex-direction:row;gap:6px}
+  .formulagrid{grid-template-columns:repeat(2,1fr)}
+  .dashgrid{grid-template-columns:1fr 1fr;padding:0 14px 80px;gap:10px}
+  .sectionhd{padding:16px 14px 8px;font-size:1.1rem}
+  .adminlayout{padding:14px;gap:14px;grid-template-columns:1fr;padding-bottom:80px}
+  .apanel{padding:16px}
+  .navgreet span{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+/* ── MOBILE BOTTOM NAV ── */
+.mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:400;
+  background:rgba(7,9,15,.96);backdrop-filter:blur(24px);
+  border-top:1px solid var(--border2);height:60px;
+}
+@media(max-width:768px){.mobile-nav{display:flex}}
+.mnbtn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;cursor:pointer;
+  color:var(--t3);font-size:.62rem;font-weight:700;
+  transition:all .2s;border:none;background:none;font-family:var(--fn);
+  padding:0;
+}
+.mnbtn .mnico{font-size:22px;transition:transform .25s var(--spring)}
+.mnbtn.on{color:var(--purple-lt)}
+.mnbtn.on .mnico{transform:scale(1.25)}
+.mnbtn:active .mnico{transform:scale(.9)}
+
+/* ── DRAWER (mobile subject+chapter picker) ── */
+.drawer-ov{
+  display:none;position:fixed;inset:0;bottom:60px;z-index:450;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
+}
+.drawer-ov.on{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.drawer{
+  position:fixed;left:0;top:0;bottom:60px;z-index:460;
+  width:88%;max-width:340px;
+  background:var(--bg2);border-right:1px solid var(--border2);
+  display:flex;transform:translateX(-100%);
+  transition:transform .32s var(--spring);
+  box-shadow:8px 0 32px rgba(0,0,0,.5);
+}
+.drawer.on{transform:translateX(0)}
+.drawer-left{
+  width:130px;flex-shrink:0;background:var(--bg);
+  border-right:1px solid var(--border);overflow-y:auto;padding:8px 0;
+}
+.drawer-right{flex:1;overflow-y:auto;padding:8px 0}
+.drawer-left .pitem{padding:8px 7px;margin:1px 4px;font-size:.75rem;gap:5px;border-radius:7px}
+.drawer-left .pitemicon{width:22px;height:22px;font-size:12px;border-radius:5px}
+.drawer-left .panelhd{font-size:.58rem;padding:8px 8px 2px}
+.drawer-right .chitem{padding:9px 10px;margin:1px 5px}
+.drawer-right .chititle{font-size:.82rem}
+.drawer-right .addchbtn{margin:8px 6px 0;font-size:.78rem;padding:8px}
 </style>
 </head>
 <body>
@@ -724,8 +782,30 @@ body{
   </div>
 </div>
 
-<!-- ════════ APP ════════ -->
-<div id="app">
+<!-- ════════ MOBILE BOTTOM NAV ════════ -->
+<div class="mobile-nav">
+  <button class="mnbtn on" id="mn-dash" onclick="sv('dashboard');setMN('dash')">
+    <span class="mnico">🏠</span><span>Home</span>
+  </button>
+  <button class="mnbtn" id="mn-notes" onclick="openDrawer()">
+    <span class="mnico">📖</span><span>Notes</span>
+  </button>
+  <button class="mnbtn" id="mn-search" onclick="openMobileSearch()">
+    <span class="mnico">🔍</span><span>Search</span>
+  </button>
+  <button class="mnbtn" id="mn-admin" onclick="sv('admin');setMN('admin')">
+    <span class="mnico">⚙️</span><span>Admin</span>
+  </button>
+</div>
+
+<!-- ════════ MOBILE DRAWER ════════ -->
+<div class="drawer-ov" id="drawer-ov" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-left" id="drawer-left"></div>
+  <div class="drawer-right" id="drawer-right">
+    <div style="padding:14px;color:var(--t3);font-size:.81rem;text-align:center">Subject chunein</div>
+  </div>
+</div>
   <nav class="topnav">
     <div class="navlogo">
       <div class="navlogoglow">📚</div>
@@ -883,7 +963,16 @@ body{
   </div>
 </div>
 
-<!-- Edit Modal -->
+<!-- Mobile Search Modal -->
+<div class="modalbg" id="msearchModal">
+  <div class="modal" style="max-width:420px">
+    <h3>🔍 Search</h3>
+    <input class="fin" id="msearch-input" placeholder="Topic, formula, keyword..." 
+      oninput="doMobileSearch(this.value)" style="margin-bottom:12px"/>
+    <div id="msearch-results" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="modalact"><button class="btn btnG" onclick="closeModal('msearchModal')">Close</button></div>
+  </div>
+</div>
 <div class="modalbg" id="editModal">
   <div class="modal">
     <h3>✏️ Edit Chapter</h3>
@@ -1270,8 +1359,114 @@ function startIfSaved(){
 }
 
 /* ══════════════════════════════════════════
-   THEME
+   MOBILE NAV & DRAWER
 ══════════════════════════════════════════ */
+function setMN(id){
+  document.querySelectorAll('.mnbtn').forEach(b=>b.classList.remove('on'));
+  const el=document.getElementById('mn-'+id);
+  if(el)el.classList.add('on');
+}
+
+function openDrawer(){
+  setMN('notes');
+  sv('notes');
+  renderDrawerLeft();
+  document.getElementById('drawer').classList.add('on');
+  document.getElementById('drawer-ov').classList.add('on');
+}
+
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('drawer-ov').classList.remove('on');
+}
+
+function renderDrawerLeft(){
+  let h='';
+  CM.forEach(cm=>{
+    h+=`<div class="panelhd">Class ${cm.cls}</div>`;
+    (SUBS[cm.cls]||[]).forEach(sub=>{
+      const m=SM[sub]||{icon:'📖',color:'#a78bfa',glow:'rgba(139,92,246,.15)'};
+      const isA=aCls===cm.cls&&aSub===sub;
+      h+=`<div class="pitem ${isA?'on':''}" onclick="selSubMobile('${cm.cls}','${esc(sub)}')">
+        <div class="pitemicon" style="background:${m.glow};color:${m.color}">${m.icon}</div>
+        <span style="font-size:.72rem">${sub}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('drawer-left').innerHTML=h;
+}
+
+async function selSubMobile(cls,sub){
+  aCls=cls;aSub=sub;aCh=null;
+  renderDrawerLeft();
+  // Right panel of drawer
+  document.getElementById('drawer-right').innerHTML=`<div style="padding:14px;color:var(--t3);font-size:.8rem;text-align:center">Loading...</div>`;
+  loader(true);
+  try{
+    const fresh=await fbGetBySub(cls,sub);
+    chapters=chapters.filter(c=>!(c.class===cls&&c.subject===sub));
+    chapters=[...fresh,...chapters];
+    renderDrawerRight();
+    renderPL();renderPM();
+  }catch(e){toast('Error: '+e.message,'error');}
+  loader(false);
+}
+
+function renderDrawerRight(){
+  const filt=chapters.filter(c=>c.class===aCls&&c.subject===aSub);
+  let h=filt.map(ch=>{
+    const m=SM[ch.subject]||{icon:'📖',color:'#a78bfa',glow:'rgba(139,92,246,.15)'};
+    return`<div class="chitem ${aCh?.id===ch.id?'on':''}" onclick="selChMobile('${ch.id}')">
+      <div class="chiticon" style="background:${m.glow};color:${m.color}">${ch.icon||m.icon}</div>
+      <div class="chitinfo">
+        <div class="chititle">${ch.chapter}</div>
+        <div class="chisub">${ch.topics?.length||0} topics</div>
+      </div>
+    </div>`;}).join('');
+  h+=`<button class="addchbtn" onclick="closeDrawer();sv('admin');setMN('admin')">➕ Chapter Add</button>`;
+  document.getElementById('drawer-right').innerHTML=filt.length===0
+    ?`<div style="padding:14px;color:var(--t3);font-size:.8rem;text-align:center">Koi chapter nahi</div>`+h.slice(h.indexOf('<button'))
+    :h;
+}
+
+function selChMobile(id){
+  aCh=chapters.find(c=>c.id===id)||null;
+  aTopic=0;
+  closeDrawer();
+  renderPM();
+  renderChContent();
+}
+
+function openMobileSearch(){
+  document.getElementById('msearchModal').classList.add('on');
+  setTimeout(()=>document.getElementById('msearch-input').focus(),200);
+}
+function doMobileSearch(q){
+  const res=document.getElementById('msearch-results');
+  if(!q.trim()){res.innerHTML='';return;}
+  const ql=q.toLowerCase();
+  const results=[];
+  chapters.forEach(ch=>{
+    (ch.topics||[]).forEach((t,ti)=>{
+      const hay=[t.title,t.definition,...(t.keyPoints||[]),...(t.summary||[])].join(' ').toLowerCase();
+      if(hay.includes(ql)){
+        const m=SM[ch.subject]||{icon:'📖',color:'#a78bfa',glow:'rgba(139,92,246,.15)'};
+        results.push({chId:ch.id,chName:ch.chapter,cls:ch.class,topicIdx:ti,topicTitle:t.title,icon:ch.icon,m});
+      }
+    });
+  });
+  if(!results.length){res.innerHTML=`<div style="padding:14px;color:var(--t3);text-align:center;font-size:.84rem">Koi result nahi</div>`;return;}
+  res.innerHTML=results.slice(0,10).map(r=>`
+    <div class="sditem" style="border-radius:10px;border:1px solid var(--border)"
+      onclick="goSearch('${r.chId}',${r.topicIdx});closeModal('msearchModal')">
+      <div class="sdicon" style="background:${r.m.glow};color:${r.m.color}">${r.icon||r.m.icon}</div>
+      <div class="sdinfo">
+        <div class="sdtitle">${r.topicTitle}</div>
+        <div class="sdmeta">${r.chName} · Class ${r.cls}</div>
+      </div>
+    </div>`).join('');
+}
+
 function toggleTheme(){
   const html=document.documentElement;
   html.dataset.theme=html.dataset.theme==='dark'?'light':'dark';
@@ -1291,6 +1486,9 @@ function sv(v){
   ['dashboard','notes','admin'].forEach((n,i)=>{
     if(n===v)document.querySelectorAll('.navtab')[i].classList.add('on');
   });
+  // Mobile nav sync
+  const mnMap={dashboard:'dash',notes:'notes',admin:'admin'};
+  if(mnMap[v]) setMN(mnMap[v]);
   if(v==='notes')renderPL();
 }
 
