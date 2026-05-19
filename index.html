@@ -751,6 +751,19 @@ body{
 .drawer-right .chitem{padding:9px 10px;margin:1px 5px}
 .drawer-right .chititle{font-size:.82rem}
 .drawer-right .addchbtn{margin:8px 6px 0;font-size:.78rem;padding:8px}
+
+/* Mobile back button */
+.mobile-only-btn{
+  display:none;width:100%;margin-bottom:14px;
+  padding:10px 16px;border-radius:10px;
+  background:rgba(139,92,246,.12);
+  border:1px solid rgba(139,92,246,.3);
+  color:var(--purple-lt);font-family:var(--fn);
+  font-size:.88rem;font-weight:700;cursor:pointer;
+  text-align:left;transition:all .2s;
+}
+.mobile-only-btn:active{background:rgba(139,92,246,.22)}
+@media(max-width:768px){.mobile-only-btn{display:block}}
 </style>
 </head>
 <body>
@@ -784,16 +797,16 @@ body{
 
 <!-- ════════ MOBILE BOTTOM NAV ════════ -->
 <div class="mobile-nav">
-  <button class="mnbtn on" id="mn-dash" onclick="sv('dashboard');setMN('dash')">
+  <button class="mnbtn on" id="mn-dash" onclick="svMobile('dashboard')">
     <span class="mnico">🏠</span><span>Home</span>
   </button>
-  <button class="mnbtn" id="mn-notes" onclick="openDrawer()">
+  <button class="mnbtn" id="mn-notes" onclick="svMobile('notes')">
     <span class="mnico">📖</span><span>Notes</span>
   </button>
   <button class="mnbtn" id="mn-search" onclick="openMobileSearch()">
     <span class="mnico">🔍</span><span>Search</span>
   </button>
-  <button class="mnbtn" id="mn-admin" onclick="sv('admin');setMN('admin')">
+  <button class="mnbtn" id="mn-admin" onclick="svMobile('admin')">
     <span class="mnico">⚙️</span><span>Admin</span>
   </button>
 </div>
@@ -1274,10 +1287,12 @@ async function fbGetAll(){
 }
 async function fbGetBySub(cls,sub){
   await waitForFB();
-  const{collection,getDocs,query,where,orderBy}=window._fns;
-  const q=query(collection(window._db,'chapters'),where('class','==',cls),where('subject','==',sub),orderBy('createdAt','desc'));
+  // Pehle sab load karo, phir client side filter — no composite index needed
+  const{collection,getDocs,query,orderBy}=window._fns;
+  const q=query(collection(window._db,'chapters'),orderBy('createdAt','desc'));
   const s=await getDocs(q);
-  return s.docs.map(d=>({id:d.id,...d.data()}));
+  const all=s.docs.map(d=>({id:d.id,...d.data()}));
+  return all.filter(c=>c.class===cls&&c.subject===sub);
 }
 async function fbAdd(data){
   await waitForFB();
@@ -1366,6 +1381,58 @@ function setMN(id){
   const el=document.getElementById('mn-'+id);
   if(el)el.classList.add('on');
 }
+
+function svMobile(v){
+  // Agar Notes par already hain aur chapter open hai - drawer kholo
+  if(v==='notes' && document.getElementById('view-notes').classList.contains('on') && aCh){
+    openDrawer(); return;
+  }
+  sv(v);
+  // Mobile nav highlight
+  document.querySelectorAll('.mnbtn').forEach(b=>b.classList.remove('on'));
+  const mnMap={dashboard:'mn-dash',notes:'mn-notes',admin:'mn-admin',search:'mn-search'};
+  if(mnMap[v]) document.getElementById(mnMap[v])?.classList.add('on');
+  // Notes par click → drawer bhi kholo agar chapter nahi hai
+  if(v==='notes' && !aCh) setTimeout(openDrawer, 100);
+  // History push
+  history.pushState({view:v},'',window.location.href.split('?')[0]);
+}
+
+// Back button handle karo — app se bahar mat jao
+window.addEventListener('popstate',function(e){
+  // Drawer open hai to band karo
+  if(document.getElementById('drawer').classList.contains('on')){
+    closeDrawer();
+    history.pushState({view:'notes'},'',window.location.href);
+    return;
+  }
+  // Notes view mein chapter open hai to chapter band karo
+  if(document.getElementById('view-notes').classList.contains('on') && aCh){
+    aCh=null;
+    renderPR();
+    history.pushState({view:'notes'},'',window.location.href);
+    return;
+  }
+  // Notes view mein ho to dashboard par jao
+  if(document.getElementById('view-notes').classList.contains('on')){
+    sv('dashboard');
+    setMN('dash');
+    history.pushState({view:'dashboard'},'',window.location.href);
+    return;
+  }
+  // Admin mein ho to dashboard par jao
+  if(document.getElementById('view-admin').classList.contains('on')){
+    sv('dashboard');
+    setMN('dash');
+    history.pushState({view:'dashboard'},'',window.location.href);
+    return;
+  }
+  // Dashboard par ho — app ke andar raho
+  history.pushState({view:'dashboard'},'',window.location.href);
+});
+
+// Initial history state set karo
+history.replaceState({view:'dashboard'},'',window.location.href);
 
 function openDrawer(){
   setMN('notes');
@@ -1484,12 +1551,11 @@ function sv(v){
   document.querySelectorAll('.navtab').forEach(el=>el.classList.remove('on'));
   document.getElementById('view-'+v).classList.add('on');
   ['dashboard','notes','admin'].forEach((n,i)=>{
-    if(n===v)document.querySelectorAll('.navtab')[i].classList.add('on');
+    if(n===v) document.querySelectorAll('.navtab')[i].classList.add('on');
   });
-  // Mobile nav sync
-  const mnMap={dashboard:'dash',notes:'notes',admin:'admin'};
-  if(mnMap[v]) setMN(mnMap[v]);
-  if(v==='notes')renderPL();
+  if(v==='notes') renderPL();
+  // Drawer band karo jab koi bhi tab switch ho
+  closeDrawer();
 }
 
 function renderAll(){renderDash();renderPL();renderPM();renderAdminList();}
@@ -1616,6 +1682,10 @@ function renderChContent(){
   const m=SM[ch.subject]||{icon:'📖',color:'#a78bfa',glow:'rgba(139,92,246,.2)'};
   document.getElementById('panelR').innerHTML=`
     <div style="animation:viewIn .35s var(--ease) both">
+      <!-- Mobile back button -->
+      <button class="mobile-only-btn" onclick="aCh=null;renderPR();renderPM();openDrawer()">
+        ← Wapas Chapters
+      </button>
       <div class="chapterhero" style="--hglow:${m.glow}">
         <div class="heroinner">
           <div>
